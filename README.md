@@ -17,6 +17,7 @@ Tested on firmware **3.22.4.2** with xovi v19.
 | `tablet/TodoPanel.qml` | inside reMarkable's app | The tab and panel; reads `todos.json`, stores check marks in `state.json` |
 | `tablet/margin-todos.qmd` | xovi / qt-resource-rebuilder | Inserts a `Loader` for `TodoPanel.qml` into the writing screen (`DocumentView.qml`, `Item#_uiContainer`) |
 | `tools/detect.py` | Mac | The reference detector (Python + rmscene); the Go one must match it |
+| `sync/MarginTodosSync.swift` | Mac mini, background app | Receives the tablet's todos and keeps one Apple Reminders list per notebook (iCloud → iPhone) |
 
 ## Detection
 
@@ -57,6 +58,33 @@ last write. A full scan of 51 notebooks takes about 0.2 s on the tablet; the ser
   `LibraryController.setScrollPosition(docId, page, y + 0.6 × view height)` (a saved scroll position is
   the page y at the bottom of the view). Found in the app's own QML.
 - `TodoPanel.qml` loads when the app starts: restart xochitl after changing it.
+
+## iPhone sync (Apple Reminders)
+
+The tablet sends; nothing connects to it. When todos or check marks change, and every 2 minutes
+while awake, the detector POSTs to the Mac (`/home/root/todo/sync.json`: url + shared token):
+the todos, the tablet's check marks with their last-change time, and images the Mac asked for.
+The reply carries check marks changed on the phone, merged back into `state.json`.
+
+On the Mac, `MarginTodosSync.app` (in `/Applications`, run by the LaunchAgent
+`com.audie.margin-todos-sync` in the Background session):
+
+- **One list per notebook**, named after it, following renames. An existing list with the same
+  name is used rather than duplicated.
+- **Titles from on-device OCR** (Vision, handwriting): set once when the reminder is created and
+  never overwritten, so edits on the phone stick. 5/5 correct on the first real todos.
+- **Checked state syncs both ways:** whichever side changed since the last sync wins; if both did,
+  the more recent change wins (phone: reminder's last-modified time; tablet: `state.json` mtime).
+- **Erasing a box** on the tablet deletes its reminder. **Deleting a reminder** on the phone leaves
+  it gone (the todo is remembered as dismissed while its box exists).
+- State in `~/Library/Application Support/MarginTodosSync/` (`config.json` with the port and
+  token, `state.json`, `images/`, `log.txt`).
+
+Setup: `sync/build-app.sh`, copy `MarginTodosSync.app` to `/Applications`, write `config.json`
+(`{"token": "...", "port": 8766}`), then **open the app once on the Mac's own screen**: it asks
+for Reminders access, which macOS only shows in the desktop session. After that the LaunchAgent can
+run it in the background (the grant follows the app). Rebuilding changes the ad-hoc signature, so
+macOS may ask again.
 
 ## Install
 
