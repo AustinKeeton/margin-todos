@@ -1,11 +1,11 @@
 # margin-todos
 
-Handwritten to-dos for the reMarkable 2. Draw a checkbox in the left margin of a page that uses the
-**Margin large** template, write the to-do to its right, and it shows up in a list you can open from
+Handwritten todos for the reMarkable 2. Draw a checkbox in the left margin of a page that uses the
+**Margin large** template, write the todo to its right, and it shows up in a list you can open from
 the writing screen: a small tab near the bottom-right corner, 1 cm from the edge. The list is per
-notebook. Tap a checkbox to complete or reopen a to-do; tap the to-do itself to jump to that place
-in the notebook. Open to-dos come first, then completed ones, newest first within each. There's no
-handwriting recognition yet: each to-do is an image of what you wrote.
+notebook. Tap a checkbox to complete or reopen a todo; tap the todo itself to jump to that place
+in the notebook. Open todos come first, then completed ones, newest first within each. There's no
+handwriting recognition yet: each todo is an image of what you wrote.
 
 Tested on firmware **3.22.4.2** with xovi v19.
 
@@ -13,7 +13,7 @@ Tested on firmware **3.22.4.2** with xovi v19.
 
 | Piece | Where it runs | What it does |
 |---|---|---|
-| `detector/` (Go) | tablet, `margin-todos.service` | Watches notebook saves with inotify, finds checkboxes, renders each to-do's handwriting to a PNG, writes `/home/root/todo/todos.json` |
+| `detector/` (Go) | tablet, `margin-todos.service` | Watches notebook saves with inotify, finds checkboxes, renders each todo's handwriting to a PNG, writes `/home/root/todo/todos.json` |
 | `tablet/TodoPanel.qml` | inside reMarkable's app | The tab and panel; reads `todos.json`, stores check marks in `state.json` |
 | `tablet/margin-todos.qmd` | xovi / qt-resource-rebuilder | Inserts a `Loader` for `TodoPanel.qml` into the writing screen (`DocumentView.qml`, `Item#_uiContainer`) |
 | `tools/detect.py` | Mac | The reference detector (Python + rmscene); the Go one must match it |
@@ -28,7 +28,7 @@ on a 1404×1872 page), and lines are 97 px apart.
   (Measured on real boxes: 57×44 px, path 196 against an outline of 204.)
 - **Checked in ink:** another margin stroke covers more than 30% of the box. That's the starting
   state; taps in the list override it.
-- **The to-do:** strokes right of the margin whose vertical center lies within the box's height,
+- **The todo:** strokes right of the margin whose vertical center lies within the box's height,
   extended by half of it above and below. Measured relative to the box, so it doesn't depend on
   the template lines.
 - **Only Margin large pages.** Box-shaped drawings near the left edge of other pages are common:
@@ -46,7 +46,7 @@ root text position), ported from [rmscene](https://github.com/ricklupton/rmscene
 reMarkable's app saves a page while you work on it and again when you close the notebook. The
 detector waits on inotify (no polling, no CPU while idle), and rescans a notebook 1.5 s after its
 last write. A full scan of 51 notebooks takes about 0.2 s on the tablet; the service uses about
-6.5 MB of memory. Each to-do keeps the time it was first seen (`created`), which orders the list.
+6.5 MB of memory. Each todo keeps the time it was first seen (`created`), which orders the list.
 
 ## UI notes
 
@@ -61,8 +61,15 @@ last write. A full scan of 51 notebooks takes about 0.2 s on the tablet; the ser
 ## Install
 
 Needs [xovi](https://github.com/asivery/rm-xovi-extensions) with qt-resource-rebuilder and a hashtab
-(`xovi/rebuild_hashtable`). xovi is tethered: after a reboot run `xovi/start` (the detector keeps
-running regardless; only the tab needs xovi).
+(`xovi/rebuild_hashtable`). The detector runs regardless; only the tab needs xovi.
+
+**Starting xovi at boot.** xovi is tethered by design (a reboot comes back stock).
+`xovi-autostart.service` runs `/home/root/xovi/autostart` after the app starts, which starts xovi
+with a crash-loop guard: each boot counts an attempt in `/home/root/xovi/autostart-attempts`, two
+minutes of the app staying up resets it, and after two attempts in a row that didn't, the tablet
+stays stock until that file is deleted. If a mod crashed the app, the cost is at most two extra
+reboots. (xovi's author warns against auto-start on *encrypted* tablets, where it can boot-loop
+before `/home` is unlocked; this tablet's `/home` is a plain partition.)
 
 ```sh
 scripts/build.sh                 # Go → detector/margin-todos-detector (linux/arm, static)

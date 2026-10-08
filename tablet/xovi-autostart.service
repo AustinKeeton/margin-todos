@@ -1,0 +1,11 @@
+# Starts xovi after boot; the script guards against crash loops (see /home/root/xovi/autostart).
+[Unit]
+Description=Start xovi after boot
+After=xochitl.service
+
+[Service]
+Type=simple
+ExecStart=/bin/sh /home/root/xovi/autostart
+
+[Install]
+WantedBy=multi-user.target

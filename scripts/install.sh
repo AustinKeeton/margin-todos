@@ -11,5 +11,8 @@ ssh "$HOST" 'mkdir -p /home/root/todo/img && systemctl stop margin-todos 2>/dev/
 scp -q "$DIR/detector/margin-todos-detector" "$DIR/tablet/TodoPanel.qml" "$HOST":/home/root/todo/
 scp -q "$DIR/tablet/margin-todos.service" "$HOST":/etc/systemd/system/
 scp -q "$DIR/tablet/margin-todos.qmd" "$HOST":/home/root/xovi/exthome/qt-resource-rebuilder/
-ssh "$HOST" 'systemctl daemon-reload && systemctl enable --now margin-todos && systemctl restart xochitl
+scp -q "$DIR/tablet/xovi-autostart.sh" "$HOST":/home/root/xovi/autostart
+scp -q "$DIR/tablet/xovi-autostart.service" "$HOST":/etc/systemd/system/
+ssh "$HOST" 'systemctl daemon-reload && systemctl enable --now margin-todos && systemctl enable xovi-autostart
+  systemctl restart xochitl
   sleep 3; journalctl -u margin-todos -n 2 --no-pager'

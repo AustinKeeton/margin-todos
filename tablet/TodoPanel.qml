@@ -92,9 +92,10 @@ Item {
     }
     component Chevron: Item {
         property bool up: true
+        property color ink: "black"
         width: 22; height: 14
-        Rectangle { x: 0; y: 5; width: 14; height: 4; radius: 2; color: "black"; antialiasing: true; rotation: up ? -40 : 40 }
-        Rectangle { x: 8; y: 5; width: 14; height: 4; radius: 2; color: "black"; antialiasing: true; rotation: up ? 40 : -40 }
+        Rectangle { x: 0; y: 5; width: 14; height: 4; radius: 2; color: ink; antialiasing: true; rotation: up ? -40 : 40 }
+        Rectangle { x: 8; y: 5; width: 14; height: 4; radius: 2; color: ink; antialiasing: true; rotation: up ? 40 : -40 }
     }
 
     // The panel: bottom third of the screen.
@@ -173,7 +174,7 @@ Item {
             Text {
                 anchors.centerIn: parent
                 visible: root.todos.length === 0
-                text: "No to-dos in this notebook yet.\nDraw a box in the left margin, then write to its right."
+                text: "No todos in this notebook yet.\nDraw a box in the left margin, then write to its right."
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: 22
                 color: "#555555"
@@ -182,32 +183,34 @@ Item {
     }
 
     // The tab, 1 cm from the right edge. Closed, it sits on the bottom edge; open, it rides on
-    // top of the panel, joined to it, and closes it.
+    // top of the panel, joined to it, turns dark, and closes it.
     Rectangle {
         id: tab
         width: 230
-        height: 54
+        height: 75 // 63 px showing: half again the first version
         radius: 10
         z: 2
         anchors.right: parent.right
         anchors.rightMargin: root.cm
         anchors.bottom: root.open ? panel.top : parent.bottom
-        anchors.bottomMargin: -12 // tuck the rounded bottom corners out of sight
-        color: "white"
+        // Closed: the rounded bottom corners tuck below the screen edge. Open: the tab ends on the
+        // panel's top line, and the joiner below squares its bottom corners.
+        anchors.bottomMargin: root.open ? 0 : -12
+        color: root.open ? "black" : "white"
         border.color: "black"
         border.width: 3
 
         Row {
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: -6
+            anchors.verticalCenterOffset: root.open ? 0 : -6 // center in the part that shows
             spacing: 14
             Text {
-                text: root.openCount > 0 ? "To-dos · " + root.openCount : "To-dos"
-                font.pixelSize: 24
-                color: "black"
+                text: root.openCount > 0 ? "Todos · " + root.openCount : "Todos"
+                font.pixelSize: 26
+                color: root.open ? "white" : "black"
                 anchors.verticalCenter: parent.verticalCenter
             }
-            Chevron { up: !root.open; anchors.verticalCenter: parent.verticalCenter }
+            Chevron { up: !root.open; ink: root.open ? "white" : "black"; anchors.verticalCenter: parent.verticalCenter }
         }
         MouseArea {
             anchors.fill: parent
@@ -215,15 +218,15 @@ Item {
             onClicked: { root.reload(); root.open = !root.open }
         }
     }
-    // Joins an open tab to the panel: hides the tab's tucked bottom and the panel's top edge
-    // under it, so the two read as one shape.
+    // Joins an open tab to the panel: squares off the tab's tucked bottom where it meets the
+    // panel's top edge, so the dark tab reads as a handle on the panel.
     Rectangle {
         visible: root.open
         z: 3
-        x: tab.x + 3
-        width: tab.width - 6
-        y: panel.y - 3
-        height: 18
-        color: "white"
+        x: tab.x
+        width: tab.width
+        y: panel.y - 12
+        height: 12
+        color: "black"
     }
 }
