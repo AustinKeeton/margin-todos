@@ -1,0 +1,78 @@
+# margin-todos
+
+Handwritten to-dos for the reMarkable 2. Draw a checkbox in the left margin of a page that uses the
+**Margin large** template, write the to-do to its right, and it shows up in a list you can open from
+the writing screen: a small tab near the bottom-right corner, 1 cm from the edge. The list is per
+notebook. Tap a checkbox to complete or reopen a to-do; tap the to-do itself to jump to that place
+in the notebook. Open to-dos come first, then completed ones, newest first within each. There's no
+handwriting recognition yet: each to-do is an image of what you wrote.
+
+Tested on firmware **3.22.4.2** with xovi v19.
+
+## Pieces
+
+| Piece | Where it runs | What it does |
+|---|---|---|
+| `detector/` (Go) | tablet, `margin-todos.service` | Watches notebook saves with inotify, finds checkboxes, renders each to-do's handwriting to a PNG, writes `/home/root/todo/todos.json` |
+| `tablet/TodoPanel.qml` | inside reMarkable's app | The tab and panel; reads `todos.json`, stores check marks in `state.json` |
+| `tablet/margin-todos.qmd` | xovi / qt-resource-rebuilder | Inserts a `Loader` for `TodoPanel.qml` into the writing screen (`DocumentView.qml`, `Item#_uiContainer`) |
+| `tools/detect.py` | Mac | The reference detector (Python + rmscene); the Go one must match it |
+
+## Detection
+
+On "Margin large" pages, the margin line is at x = 244 page px (`templateWidth/2 - templateHeight/2 + 478`
+on a 1404×1872 page), and lines are 97 px apart.
+
+- **Checkbox:** one stroke left of the margin, 20–140 px on a side, aspect ratio 0.5–2, path length
+  0.75–1.4 × its bounding-box outline, and ending within 30% of the outline from where it started.
+  (Measured on real boxes: 57×44 px, path 196 against an outline of 204.)
+- **Checked in ink:** another margin stroke covers more than 30% of the box. That's the starting
+  state; taps in the list override it.
+- **The to-do:** strokes right of the margin whose vertical center lies within the box's height,
+  extended by half of it above and below. Measured relative to the box, so it doesn't depend on
+  the template lines.
+- **Only Margin large pages.** Box-shaped drawings near the left edge of other pages are common:
+  352 false hits across 50 older notebooks without this filter, 0 with it.
+- **Page coordinates:** since 3.x, strokes sit in groups anchored to the page's text block:
+  x = 702 + group `anchor_origin_x` + point x, y = root text `pos_y` + point y.
+- Pages still in the older v5 format are skipped; the tablet rewrites a page as v6 once it's edited.
+
+`detector/rmfile.go` reads only what detection needs from the v6 format (line items, group anchors,
+root text position), ported from [rmscene](https://github.com/ricklupton/rmscene). Checked against
+`tools/detect.py`: identical results on the 352-detection set (ids, page, y, checked, image size).
+
+## Live updates
+
+reMarkable's app saves a page while you work on it and again when you close the notebook. The
+detector waits on inotify (no polling, no CPU while idle), and rescans a notebook 1.5 s after its
+last write. A full scan of 51 notebooks takes about 0.2 s on the tablet; the service uses about
+6.5 MB of memory. Each to-do keeps the time it was first seen (`created`), which orders the list.
+
+## UI notes
+
+- reMarkable's app reads the pen in its own thread straight into the canvas, so the panel can't
+  block it: use a finger on the panel. Writing over the open panel inks the page underneath.
+- The tablet's font has no ✓ or ▾ glyphs, so the check and chevron are drawn shapes.
+- Jumping: `documentView.openPage(document.pageForId(pageId), ScrollPosition.Restore)` after
+  `LibraryController.setScrollPosition(docId, page, y + 0.6 × view height)` (a saved scroll position is
+  the page y at the bottom of the view). Found in the app's own QML.
+- `TodoPanel.qml` loads when the app starts: restart xochitl after changing it.
+
+## Install
+
+Needs [xovi](https://github.com/asivery/rm-xovi-extensions) with qt-resource-rebuilder and a hashtab
+(`xovi/rebuild_hashtable`). xovi is tethered: after a reboot run `xovi/start` (the detector keeps
+running regardless; only the tab needs xovi).
+
+```sh
+scripts/build.sh                 # Go → detector/margin-todos-detector (linux/arm, static)
+scripts/install.sh [ssh-host]    # detector service, panel, xovi diff; restarts xochitl
+```
+
+## Tools
+
+- `tools/detect.py <xochitl-dir> <out-dir> [--all-templates]`: reference detector.
+- `tools/unhash.py <hashtab> <file.qmd>`: translates community hashed `.qmd` files into readable
+  names, to learn what they patch. Output contains reMarkable's own names: keep it local.
+- `tools/qrcdump/`: an `LD_PRELOAD` library that saves an app's compiled-in Qt resources as they
+  register, to read the app's QML for reference. Keep the dump local; it's reMarkable's code.

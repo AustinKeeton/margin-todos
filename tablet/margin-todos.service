@@ -1,0 +1,14 @@
+# margin-todos detector: watches notebook saves and keeps /home/root/todo/todos.json current.
+[Unit]
+Description=margin-todos checkbox detector
+After=local-fs.target
+
+[Service]
+ExecStart=/home/root/todo/margin-todos-detector
+Restart=always
+RestartSec=10
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

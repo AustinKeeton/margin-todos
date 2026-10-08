@@ -1,0 +1,15 @@
+; margin-todos: loads the to-do tab and panel into the writing screen (firmware 3.22).
+; The UI itself lives in /home/root/todo/TodoPanel.qml so it can change without touching this diff.
+AFFECT /qml/device/view/documentview/DocumentView.qml
+    TRAVERSE FocusScope > Item#_uiContainer
+        LOCATE AFTER ALL
+        INSERT {
+            Loader {
+                id: marginTodosLoader
+                anchors.fill: parent
+                z: 1000
+                source: "file:///home/root/todo/TodoPanel.qml"
+            }
+        }
+    END TRAVERSE
+END AFFECT

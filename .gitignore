@@ -1,0 +1,9 @@
+# reMarkable's own QML (dumped for reference), hashtab and community diffs: not ours to publish
+ref/
+# notebook pages and detector output (personal)
+pages/
+out/
+# build outputs
+detector/margin-todos-detector
+tools/qrcdump/*.so
+.DS_Store
