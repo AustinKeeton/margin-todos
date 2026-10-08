@@ -16,7 +16,7 @@ import (
 
 const settle = 1500 * time.Millisecond
 
-func watch(s *store) error {
+func watch(s *store, p *pusher) error {
 	fd, err := syscall.InotifyInit1(syscall.IN_CLOEXEC)
 	if err != nil {
 		return err
@@ -30,10 +30,12 @@ func watch(s *store) error {
 		}
 	}
 	add(s.src, "")
+	const outDir = "\x00out" // marker for the output directory (state.json written by the panel)
+	add(s.out, outDir)
 	for _, doc := range allDocs(s.src) {
 		add(filepath.Join(s.src, doc), doc)
 	}
-	log.Printf("watching %d notebooks", len(dirs)-1)
+	log.Printf("watching %d notebooks", len(dirs)-2)
 
 	events := make(chan string, 64)
 	go func() {
@@ -59,6 +61,10 @@ func watch(s *store) error {
 					continue
 				}
 				switch {
+				case doc == outDir:
+					if name == "state.json" {
+						p.trigger() // a check mark tapped in the panel (or written by a sync)
+					}
 				case doc != "" && strings.HasSuffix(name, ".rm"):
 					events <- doc
 				case doc == "" && ev.Mask&syscall.IN_ISDIR != 0 && ev.Mask&syscall.IN_CREATE != 0:
@@ -92,6 +98,7 @@ func watch(s *store) error {
 				if err := s.save(); err != nil {
 					log.Printf("save: %v", err)
 				}
+				p.trigger()
 			}
 		}
 	}

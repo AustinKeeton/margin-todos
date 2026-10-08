@@ -144,7 +144,13 @@ func main() {
 	if *once {
 		return
 	}
-	if err := watch(s); err != nil {
+	p := newPusher(*out)
+	if p != nil {
+		go p.run()
+		p.trigger()
+		log.Printf("sync: sending to %s", p.url)
+	}
+	if err := watch(s, p); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -7,3 +7,5 @@ out/
 detector/margin-todos-detector
 tools/qrcdump/*.so
 .DS_Store
+sync/MarginTodosSync.app/
+sync/ocr
