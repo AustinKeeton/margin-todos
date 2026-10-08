@@ -9,3 +9,4 @@ tools/qrcdump/*.so
 .DS_Store
 sync/MarginTodosSync.app/
 sync/ocr
+__pycache__/
